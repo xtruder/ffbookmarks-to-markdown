@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 
 # Build the application with static linking
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' -o /ffbookmarks-to-markdown
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags='-w -s -extldflags "-static"' -o /ffbookmarks-to-markdown ./cmd/main.go
 
 # Final stage
 FROM gcr.io/distroless/static-debian12:nonroot
