@@ -1,5 +1,8 @@
 # Firefox Bookmarks to Markdown
 
+[![Latest Release](https://img.shields.io/github/v/release/xtruder/ffbookmarks-to-markdown?style=flat-square)](https://github.com/xtruder/ffbookmarks-to-markdown/releases/latest)
+[![Docker Image](https://img.shields.io/badge/container-ghcr.io-blue?style=flat-square)](https://github.com/xtruder/ffbookmarks-to-markdown/pkgs/container/ffbookmarks-to-markdown)
+
 A tool that syncs Firefox bookmarks to markdown files for use with tools like Obsidian.
 
 - **Firefox Sync Integration**: Syncs bookmarks directly from Firefox Sync service using [ffsclient](https://github.com/Mikescher/firefox-sync-client)
