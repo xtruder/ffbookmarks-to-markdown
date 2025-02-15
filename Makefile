@@ -28,6 +28,7 @@ FFSCLIENT_TARGET=$(BUILD_DIR)/ffsclient-$(GOOS)-$(GOARCH)-$(FFSCLIENT_VERSION)
 .PHONY: build clean release ffsclient install container
 
 build: $(TARGET)
+	ln -fs $(TARGET) $(BINARY_NAME)
 release: $(RELEASE_TARGET)
 ffsclient: $(FFSCLIENT_TARGET)
 install: $(TARGET) $(FFSCLIENT_TARGET)
