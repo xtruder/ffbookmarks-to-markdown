@@ -149,14 +149,17 @@ func (p *Processor) createBookmarkFile(bookmark bookmarks.Bookmark, currentPath 
 		Tags:      []string{"bookmark"},
 	}
 
-	// Get screenshot URL
-	screenshotURL := p.screenshotService.GetScreenshotURL(bookmark.URI)
+	markdownContent := fmt.Sprintf("%s\n%s\n", frontmatter.String(), content)
+	if p.screenshotService != nil {
+		// Get screenshot URL
+		screenshotURL := p.screenshotService.GetScreenshotURL(bookmark.URI)
 
-	// Create markdown content
-	markdownContent := fmt.Sprintf("%s\n![Screenshot](%s)\n%s\n",
-		frontmatter.String(),
-		screenshotURL,
-		content)
+		// Create markdown content
+		markdownContent = fmt.Sprintf("%s\n![Screenshot](%s)\n%s\n",
+			frontmatter.String(),
+			screenshotURL,
+			content)
+	}
 
 	// Write file
 	filename := sanitizeFilename(bookmark.Title, bookmark.URI)

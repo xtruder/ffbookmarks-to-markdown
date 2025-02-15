@@ -40,7 +40,7 @@ func main() {
 	flag.BoolVar(&listBookmarks, "list", false, "List all available bookmarks")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.StringVar(&ignoreFolders, "ignore", "", "Comma-separated list of folder names to ignore")
-	flag.StringVar(&screenshotAPI, "screenshot-api", "https://gowitness.cloud.x-truder.net", "Screenshot API base URL")
+	flag.StringVar(&screenshotAPI, "screenshot-api", "", "Screenshot API base URL")
 	flag.StringVar(&llmAPIKey, "llm-key", "", "API key for LLM service")
 	flag.StringVar(&llmBaseURL, "llm-url", "https://generativelanguage.googleapis.com/v1beta/openai/", "Base URL for LLM service")
 	flag.StringVar(&llmModel, "llm-model", "gemini-2.0-flash", "Model to use for LLM service")
@@ -80,10 +80,13 @@ func main() {
 		slog.Warn("failed to initialize cache", "error", err)
 	}
 
-	llmClient, err := llm.NewOpenAIClient(llmAPIKey, llmBaseURL, llmModel, client.StandardClient(), cache)
-	if err != nil {
-		slog.Error("failed to initialize LLM client", "error", err)
-		os.Exit(1)
+	var llmClient web.ContentCleaner
+	if llmAPIKey != "" {
+		llmClient, err = llm.NewOpenAIClient(llmAPIKey, llmBaseURL, llmModel, client.StandardClient(), cache)
+		if err != nil {
+			slog.Error("failed to initialize LLM client", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	// Initialize services
@@ -93,7 +96,6 @@ func main() {
 		ContentCleaner: llmClient,
 		Cache:          cache,
 	})
-	screenshotService := web.NewScreenshotService(client.StandardClient(), screenshotAPI)
 
 	// Get Firefox bookmarkRoot
 	bookmarkRoot, err := ffFetcher.GetBookmarks()
@@ -137,42 +139,48 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Get existing screenshots
-	screenshots, err := screenshotService.GetExistingScreenshots()
-	if err != nil {
-		slog.Error("failed to get existing screenshots", "error", err)
-		os.Exit(1)
-	}
-
 	mdCache, err := markdown.BuildCache(outputDir)
 	if err != nil {
 		slog.Error("failed to build markdown cache", "error", err)
 		os.Exit(1)
 	}
 
-	newURLs := mdCache.CollectNewURLs(x.Values(allBookmarks))
+	var screenshotService *web.ScreenshotService
+	var screenshots map[string]bool
+	if screenshotAPI != "" {
+		screenshotService = web.NewScreenshotService(client.StandardClient(), screenshotAPI)
 
-	// Filter URLs that need screenshots
-	var urlsToScreenshot []string
-	for _, u := range newURLs {
-		if !screenshots[u] {
-			urlsToScreenshot = append(urlsToScreenshot, u)
+		// Get existing screenshots
+		screenshots, err = screenshotService.GetExistingScreenshots()
+		if err != nil {
+			slog.Error("failed to get existing screenshots", "error", err)
+			os.Exit(1)
 		}
-	}
 
-	// Submit new screenshots
-	if len(urlsToScreenshot) > 0 {
-		slog.Info("submitting batch screenshot request",
-			"total", len(newURLs),
-			"new", len(urlsToScreenshot),
-			"cached", len(newURLs)-len(urlsToScreenshot))
-		if err := screenshotService.SubmitScreenshots(urlsToScreenshot); err != nil {
-			slog.Error("failed to submit screenshots", "error", err)
+		newURLs := mdCache.CollectNewURLs(x.Values(allBookmarks))
+
+		// Filter URLs that need screenshots
+		var urlsToScreenshot []string
+		for _, u := range newURLs {
+			if !screenshots[u] {
+				urlsToScreenshot = append(urlsToScreenshot, u)
+			}
 		}
-	} else {
-		slog.Info("no new screenshots needed",
-			"total", len(newURLs),
-			"cached", len(newURLs))
+
+		// Submit new screenshots
+		if len(urlsToScreenshot) > 0 {
+			slog.Info("submitting batch screenshot request",
+				"total", len(newURLs),
+				"new", len(urlsToScreenshot),
+				"cached", len(newURLs)-len(urlsToScreenshot))
+			if err := screenshotService.SubmitScreenshots(urlsToScreenshot); err != nil {
+				slog.Error("failed to submit screenshots", "error", err)
+			}
+		} else {
+			slog.Info("no new screenshots needed",
+				"total", len(newURLs),
+				"cached", len(newURLs))
+		}
 	}
 
 	// Process bookmarks
