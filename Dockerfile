@@ -15,7 +15,7 @@ ARG TARGETARCH
 RUN GOARCH=$TARGETARCH make install
 
 # Final stage
-FROM --platform=$TARGETPLATFORM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot
 
 # Copy the binary and ffsclient
 COPY --from=builder /build/build/ffbookmarks-to-markdown-linux-* /ffbookmarks-to-markdown
