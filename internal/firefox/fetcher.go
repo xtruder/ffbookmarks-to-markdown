@@ -5,7 +5,9 @@ package firefox
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 )
 
@@ -24,7 +26,13 @@ func (f *FirefoxFetcher) GetBookmarks() (*BookmarksRoot, error) {
 	cmd := exec.Command(f.FFSyncCmd, "bookmarks", "list", "--format=json")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute ffsclient: %w", err)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			slog.Error("failed to execute ffsclient", "stderr", string(exitErr.Stderr))
+			return nil, err
+		}
+
+		return nil, err
 	}
 
 	var root BookmarksRoot
@@ -34,33 +42,3 @@ func (f *FirefoxFetcher) GetBookmarks() (*BookmarksRoot, error) {
 
 	return &root, nil
 }
-
-// FindFolder finds a folder by name in the bookmark tree
-// func (f *FirefoxFetcher) FindFolder(bookmarks []Bookmark, name string) *Bookmark {
-// 	for _, b := range bookmarks {
-// 		if b.Type == "folder" {
-// 			if b.Title == name {
-// 				return &b
-// 			}
-// 			if len(b.Children) > 0 {
-// 				if found := f.FindFolder(b.Children, name); found != nil {
-// 					return found
-// 				}
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
-
-// // DisplayFolders prints the folder structure with proper indentation
-// func (f *FirefoxFetcher) DisplayFolders(bookmarks []Bookmark, level int) {
-// 	indent := strings.Repeat("  ", level)
-// 	for _, b := range bookmarks {
-// 		if b.Type == "folder" {
-// 			fmt.Printf("%s- %s\n", indent, b.Title)
-// 			if len(b.Children) > 0 {
-// 				f.DisplayFolders(b.Children, level+1)
-// 			}
-// 		}
-// 	}
-// }
