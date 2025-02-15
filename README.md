@@ -54,7 +54,7 @@ Here is a single-liner to install the binary to your local bin directory:
 
 ```shell
 mkdir -p ~/.local/bin
-curl -L https://github.com/xtruder/ffbookmarks-to-markdown/releases/download/v0.1.0/ffbookmarks-to-markdown-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
+curl -L https://github.com/xtruder/ffbookmarks-to-markdown/releases/download/v0.2.0/ffbookmarks-to-markdown-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 ## Running
@@ -118,7 +118,7 @@ services:
     networks:
       - net
   ffbookmarks-to-markdown:
-    image: ghcr.io/xtruder/ffbookmarks-to-markdown:0.1.0
+    image: ghcr.io/xtruder/ffbookmarks-to-markdown:0.2.0
     command: -output /data/my-vault/Bookmarks -screenshot-api http://gowitness
     environment:
       - TZ=UTC
