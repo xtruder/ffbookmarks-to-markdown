@@ -24,7 +24,7 @@ A tool that syncs Firefox bookmarks to markdown files for use with tools like Ob
 
 ### Basic Usage
 
-```bash
+```shell
 # Sync bookmarks from Firefox toolbar folder
 ffbookmarks-to-markdown -folder toolbar -output bookmarks
 
@@ -37,7 +37,7 @@ ffbookmarks-to-markdown -verbose
 
 ### Advanced Options
 
-``` bash
+```shell
 # Ignore specific folders
 ffbookmarks-to-markdown -ignore "Archive,Old Stuff"
 
@@ -52,7 +52,7 @@ ffbookmarks-to-markdown -screenshot-api "https://your-screenshot-service"
 
 Here is a single-liner to install the binary to your local bin directory:
 
-```bash
+```shell
 mkdir -p ~/.local/bin
 curl -L https://github.com/xtruder/ffbookmarks-to-markdown/releases/download/v0.1.0/ffbookmarks-to-markdown-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
 ```
@@ -61,7 +61,7 @@ curl -L https://github.com/xtruder/ffbookmarks-to-markdown/releases/download/v0.
 
 First you need to login to your Firefox Sync account using `ffsclient` tool:
 
-```bash
+```shell
 ffsclient login
 ```
 
@@ -69,53 +69,82 @@ It will ask you for your username and password.
 
 After that you can run the tool, which will sync bookmarks from your Firefox Sync account and save them to the specified directory:
 
-```bash
+```shell
 ffbookmarks-to-markdown -folder toolbar -output bookmarks
 ```
 
 If you want to use LLM to clean up the markdown content, you need to set `GEMINI_API_KEY` environment variable:
 
-```bash
+```shell
 export GEMINI_API_KEY="your-key"
 ```
 
-## Running with Podman
+## Full docker-compose example
 
-1. Create required volumes:
-   ```bash
-   # Create volume for Firefox Sync credentials
-   podman volume create firefox-sync-creds
-   
-   # Create volume for bookmarks output
-   podman volume create bookmarks
-   
-   # Create volume for cache
-   podman volume create ffbookmarks-cache
-   ```
+Here is a full example of docker-compose file that will run gowitness, obsidian and ffbookmarks-to-markdown.
+You must make sure to copy your Firefox Sync credentials to the `obsidian-config` volume.
 
-2. Copy Firefox Sync credentials:
-   ```bash
-   # Get Firefox Sync credentials you generated using ffsclient tool
-   # ~/.config/firefox-sync-client.secret
-   # Copy credentials to volume
-   podman cp ~/.config/firefox-sync-client.secret \
-     firefox-sync-creds:/home/nonroot/.config/firefox-sync-client.secret
-   ```
+```yaml
+version: '3.9'
+name: obsidian-stack
+services:
+  obsidian:
+    container_name: obsidian
+    image: linuxserver/obsidian:1.8.4
+    networks:
+      - net
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - DOCKER_MODS=linuxserver/mods:universal-package-installer
+    volumes:
+      - obsidian-config:/config
+    shm_size: "1gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [compute,video,graphics,utility]
+    restart: unless-stopped
+  gowitness:
+    image: ghcr.io/sensepost/gowitness:latest
+    restart: unless-stopped
+    command: gowitness report server --host 0.0.0.0 --screenshot-path /data/screenshots --db-uri sqlite:///data/gowitness.sqlite3
+    volumes:
+      - gowitness-storage:/data
+    networks:
+      - net
+  ffbookmarks-to-markdown:
+    image: ghcr.io/xtruder/ffbookmarks-to-markdown:0.1.0
+    command: -output /data/my-vault/Bookmarks -screenshot-api http://gowitness
+    environment:
+      - TZ=UTC
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HOME=/home/user
+    working_dir: /home/user
+    user: 1000:1000
+    restart: never
+    volumes:
+      - obsidian-config:/data
+      - ffbookmarks-home:/home/user
+    networks:
+      - net
 
-3. Run the container:
-   ```bash
-   podman run -it --rm \
-     -v firefox-sync-creds:/home/nonroot/.config:ro \
-     -v bookmarks:/bookmarks \
-     -v ffbookmarks-cache:/home/nonroot/.cache \
-     -e GEMINI_API_KEY="your-key" \
-     ghcr.io/xtruder/ffbookmarks-to-markdown:v0.1.0 \
-     -folder toolbar -output /bookmarks
-   ```
+volumes:
+  gowitness-storage:
+  obsidian-config:
+  ffbookmarks-home:
+
+networks:
+  net:
+```
 
 ## Usage
 
-```
+```shell
 Usage of ./ffbookmarks-to-markdown:
   -folder string
         Base folder name to sync from Firefox bookmarks (default "toolbar")
